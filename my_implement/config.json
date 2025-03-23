@@ -1,0 +1,7 @@
+{
+    "image_size": 224,
+    "patch_size":16,
+    "hidden_size" : null,
+    "hybrid_model":false,
+        "grid_size": 4
+}
