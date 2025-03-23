@@ -62,10 +62,45 @@ class Embedding(nn.Module):
         out = self.dropout(out)
         return out
 
+class MLP(nn.Module):
+    def __init__(self,opts):
+        super(MLP, self).__init__()
+        self.opts = opts
+        self.fc1 = nn.Linear(in_features=self.opts.hidden_size , out_features=self.opts.hidden_size*4)
+        self.fc2 = nn.Linear(in_features=self.opts.hidden_size , out_features=self.opts.hidden_size*4)
+        self.dropout = nn.Dropout(p=0.2)
+        self.gelu = nn.GELU()
+        self.body =nn.Sequential(
+            self.fc1,
+            self.gelu,
+            self.dropout,
+            self.fc2,
+            self.dropout
+        )
+
+    def __init_weigths(self):
+        nn.init.xavier_uniform_(self.fc1.weight)
+        nn.init.xavier_uniform_(self.fc2.weight)
+        nn.init.normal_(self.fc1.bias ,std=1e-6)
+        nn.init.normal_(self.fc2.bias ,std=1e-6)
+
+    def forward(self,x:torch.Tensor):
+        return self.body(x)
+    
+class Attention_Block(nn.Module):
+    def __init__(self,opts):
+        super(Attention_Block,self).__init__()
+        pass
+
+    
+    def forward(x:torch.Tensor):
+        pass
+
 class Transformer_Block(nn.Module):
     def __init__(self, opts):
         super(Transformer_Block,self).__init__()
-        self.Mlp = None
+        self.opts = opts
+        self.mlp = MLP(opts=self.opts)
         self.layer_norm1 = LayerNorm(self.opts.hidden_size ,eps=1e-7)
         self.layer_norm2 = LayerNorm(self.opts.hidden_size ,eps=1e-7)
         self.attention_block = None
@@ -77,4 +112,7 @@ class Transformer_Block(nn.Module):
         x2, att_weigths = self.attention_block(x1)
         x3 = x2 + x1
 
-        x3 = self.layer_norm2(x3) 
+        x3 = self.layer_norm2(x3)
+        x4 = self.mlp(x3)
+        x4 = x4 + x3
+        return x3,att_weigths
