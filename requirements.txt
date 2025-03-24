@@ -1,5 +1,10 @@
 torch
+torchvision
 numpy
-tqdm
+matplotlib
+scipy
+open-cv
+torchsummary
 tensorboard
-ml-collections
+pillow
+tqdm
