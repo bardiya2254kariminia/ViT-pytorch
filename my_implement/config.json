@@ -1,7 +1,10 @@
 {
     "image_size": 224,
     "patch_size":16,
-    "hidden_size" : null,
+    "hidden_size" : 768,
     "hybrid_model":false,
-        "grid_size": 4
+        "grid_size": 4,
+    "num_attention_heads" : 12,
+    "num_transformer_layers": 12,
+    "num_class": 10
 }
