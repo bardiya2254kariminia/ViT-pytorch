@@ -8,11 +8,12 @@ import torch.nn as nn
 from PIL import Image
 from torchvision.transforms import transforms
 from torch.utils.data import DataLoader ,random_split
-from Dataset.datasets import Noisy_Cifar100 , Noisy_STL10
+from Dataset.datasets import Cifar100 , STL10 , Cifar10
 from Dataset.augmentation import Augmentation
 from config.path_config import *
 from utils.common import compute_total_variation , denormalize_image ,get_visual_map
 from config.transform_config  import Transform_class
+from models.networks import Vision_Transformer
 # losses
 import torch.nn.functional as F
 from  pytorch_msssim import ssim
@@ -48,16 +49,15 @@ class Coach(object):
             self.eval()
     
     def get_model(self):
-        if self.opts.model == "U-net":
-            return Unet(self.opts)
-        elif self.opts.model == "VAE":
-            return VAE(self.opts)
+        model = Vision_Transformer(opts=self.opts)
 
     def configurate_dataset(self):
         if self.opts.dataset == "Cifar100":
-            return Noisy_Cifar100()
+            return Cifar100()
+        if self.opts.dataset == "Cifar10":
+            return Cifar10()
         elif self.opts.dataset == "STL10":
-            return Noisy_STL10()
+            return STL10()
 
     def load_net_weigths(self):
         try:
@@ -78,14 +78,14 @@ class Coach(object):
             epoch_loss_dict = defaultdict(lambda : [])
             epoch_val_loss_dict = defaultdict(lambda : [])
             # train_phase
-            for i, (clean_image , noisy_image) in tqdm(enumerate(self.train_dataloader , start=1),total= len(self.train_dataloader)):
+            for i, (clean_image , labels) in tqdm(enumerate(self.train_dataloader , start=1),total= len(self.train_dataloader)):
                 clean_image = clean_image.to(self.opts.device)
-                noisy_image = noisy_image.to(self.opts.device)
-                output_image = self.net(noisy_image)
+                labels = labels.to(self.opts.device)
+                output_preds = self.net(clean_image)
                 # print(f"{output_image=}")
                 # sys.exit()
                 self.optimizer.zero_grad()
-                loss , loss_dict = self.calc_loss(output_image , clean_image)
+                loss , loss_dict = self.calc_loss(output_preds , labels)
                 # print(f"{loss_dict=}")
                 loss.backward()
                 self.optimizer.step()
@@ -120,46 +120,12 @@ class Coach(object):
             print("didn't provide saving path")
             sys.exit()
 
-    def calc_loss(self , output_image , target_image):
+    def calc_loss(self , preds , target):
         loss_dict = defaultdict(lambda:[])
         loss = 0
-        if self.opts.model == "U-net":
-            # reconstruction loss
-            reconstruciton_loss = F.l1_loss(input=output_image , target=target_image)
-            loss_dict["reconstruciton_loss"].append(reconstruciton_loss)
-            loss +=  self.opts.lambda_reconstruction * reconstruciton_loss
-            
-            # ssim loss
-            ssim_loss = 1- ssim(output_image , target_image)
-            loss_dict["ssim_loss"].append(ssim_loss)
-            loss +=  self.opts.lambda_ssim * ssim_loss
-
-            # total_variation loss
-            tv_loss = compute_total_variation(output_image)
-            loss_dict["tv_loss"].append(tv_loss)
-            loss +=  self.opts.lambda_total_variation * tv_loss
-        elif self.opts.model == "VAE":
-            output_image , mean , log_variance = output_image
-            # reconstruction loss
-            reconstruciton_loss = F.l1_loss(input=output_image , target=target_image)
-            loss_dict["reconstruciton_loss"].append(reconstruciton_loss)
-            loss +=  self.opts.lambda_reconstruction * reconstruciton_loss
-            
-            # ssim loss
-            ssim_loss = 1- ssim(output_image , target_image)
-            loss_dict["ssim_loss"].append(ssim_loss)
-            loss +=  self.opts.lambda_ssim * ssim_loss
-
-            # total_variation loss
-            tv_loss = compute_total_variation(output_image)
-            loss_dict["tv_loss"].append(tv_loss)
-            loss +=  self.opts.lambda_total_variation * tv_loss
-
-            # KL Divergence loss
-            kl_loss = -0.5 * torch.sum(log_variance - mean**2  - torch.exp(log_variance))
-            loss_dict["kl_loss"].append(kl_loss)
-            loss +=  self.opts.lambda_kl * kl_loss
-
+        ce_loss = F.cross_entropy(input=preds , target=target)
+        loss_dict["cross_entropy_loss"].append(ce_loss)
+        loss += ce_loss
         return loss , loss_dict
     
     def test_single(self, image_path):
@@ -174,7 +140,7 @@ class Coach(object):
         os.makedirs(saving_path , exist_ok=True)
         try:
             model_state_dict = self.net.state_dict()
-            loss_map = get_visual_map(loss_dict , os.path.join(saving_path , "loss_map.png"))
+            get_visual_map(loss_dict , os.path.join(saving_path , "loss_map.png"))
             # loss_val_map = get_visual_map(loss_val_dic , os.path.join(saving_path , "loss_val_map.png"))
             torch.save(model_state_dict , os.path.join(saving_path , self.opts.model.replace("-" , "_") + "weight.pt"))
         except:

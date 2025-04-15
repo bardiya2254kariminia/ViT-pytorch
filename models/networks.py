@@ -45,10 +45,12 @@ class Embedding(nn.Module):
             kernel_size=patch_size,
             stride=patch_size
         )
-        self.positional_embedding = nn.Parameter(torch.ones(1,patch_number+1 , self.opts.hidden_size))
-        for i in range(patch_number+1):
-            self.positional_embedding[:,i,:] = self.positional_embedding[:,i,:] * i
-        self.cls_token = nn.Parameter(torch.ones(1,1, self.opts.hidden_size))
+
+        self.positional_embedding = nn.Parameter(torch.ones(1,patch_number+1 , self.opts.hidden_size),requires_grad=True)
+        with torch.no_grad():
+            for i in range(patch_number+1):
+                self.positional_embedding[:, i, :] = self.positional_embedding[:, i, :] * i
+        self.cls_token = nn.Parameter(torch.ones(1,1, self.opts.hidden_size),requires_grad=True)
         self.dropout = Dropout(p=0.2)
 
     def forward(self,x:torch.Tensor):
@@ -154,7 +156,8 @@ class Transformer_Block(nn.Module):
 class Transformer_Encoder(nn.Module):
     def __init__(self, opts):
         super(Transformer_Encoder, self).__init__()
-        self.opts =opts
+        self.opts = opts
+        # Notice: a nn.Linear layer only consider the last layer if the  tensor has more than 2 dims
         self.norm_layer = nn.LayerNorm(self.opts.hidden_size  ,eps=1e-7)
         self.layer_list = nn.ModuleList()
         for i in range(self.opts.num_transformer_layers):
@@ -194,12 +197,12 @@ class  Vision_Transformer(nn.Module):
         z0_l = out[:,0]
         output = self.mlp_head(z0_l)
         if return_attention_weigths:
-            return output if not return_logits else torch.softmax(output, dim=-1), att_weigths
-        return output if not return_logits else torch.softmax(output, dim=-1)
+            return output if return_logits else torch.softmax(output, dim=-1), att_weigths
+        return output if return_logits else torch.softmax(output, dim=-1)
 
 
 if __name__ == "__main__":
-    with open(rf"/home/bardiya/projects/ai-side-projects/ViT-pytorch/my_implement/config.json" , "r") as f:
+    with open(rf"/home/bardiya/projects/ai-side-projects/ViT-pytorch/config.json" , "r") as f:
         opts = json.load(f)
         opts = Namespace(**opts)
     model = Vision_Transformer(opts = opts)

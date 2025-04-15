@@ -6,5 +6,17 @@
         "grid_size": 4,
     "num_attention_heads" : 12,
     "num_transformer_layers": 12,
-    "num_class": 10
+    "num_class": 10,
+    
+    "mode" : "train",
+    "device": "cuda",
+    "epoches": 40,
+    "train_size": null,
+    "load_weigth_path": null,
+    "save_weigth_path": null,
+    "dataset": "Cifar10",
+    "batch_size" : 8 ,
+    "learning_rate": 1e-3,
+    "b1": 0.5,
+    "b2": 0.99
 }
