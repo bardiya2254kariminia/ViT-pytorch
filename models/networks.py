@@ -187,7 +187,8 @@ class Transformer(nn.Module):
 
 class  Vision_Transformer(nn.Module):
     def __init__(self, opts):
-        super(Vision_Transformer , self).__init__()
+        # super(Vision_Transformer , self).__init__()
+        super().__init__()
         self.opts = opts
         self.transformer= Transformer(opts = self.opts)
         self.mlp_head = nn.Linear(in_features=self.opts.hidden_size , out_features= self.opts.num_class)
